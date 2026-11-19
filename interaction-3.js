@@ -64,11 +64,21 @@ function mapRange(value, inMin, inMax, outMin, outMax) {
 }
 
 function rotationChange(rotx, roty, rotz) {
-    // /door/door/position 的范围是 0 ~ 0.5
+    const deadzone = 8;    // keep silent until the rotation is greater than this value
+    const maxAngle = 45;   // maximum angle for full volume
+
+    // Define the min and max values for the parameter of the door
     const minVal = 0;
     const maxVal = 0.5;
-    const mappedPosition = mapRange(roty, -90, 90, minVal, maxVal);
 
+    const absAngle = Math.abs(roty);
+
+    if (absAngle <= deadzone) {
+        playAudio(minVal);
+        return;
+    }
+
+    const mappedPosition = mapRange(absAngle, deadzone, maxAngle, minVal, maxVal);
     playAudio(mappedPosition);
 }
 
