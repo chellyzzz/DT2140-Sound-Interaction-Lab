@@ -132,6 +132,7 @@ function playAudio(positionVal) {
 
     dspNode.setParamValue('/door/volume', 0.5);
     dspNode.setParamValue('/door/door/position', positionVal);
+    setTimeout(() => { dspNode.setParamValue("/door/volume", 0) }, 100);
 }
 //==========================================================================================
 // END
