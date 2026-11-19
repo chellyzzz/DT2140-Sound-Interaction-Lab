@@ -12,7 +12,7 @@ let dspNodeParams = null;
 let jsonParams = null;
 
 // Change here to ("tuono") depending on your wasm file name
-const dspName = "tuono";
+const dspName = "karplus";
 const instance = new FaustWasm2ScriptProcessor(dspName);
 
 // output to window or npm package module
@@ -25,7 +25,7 @@ if (typeof module === "undefined") {
 }
 
 // The name should be the same as the WASM file, so change tuono with brass if you use brass.wasm
-tuono.createDSP(audioContext, 1024)
+instance.createDSP(audioContext, 1024)
     .then(node => {
         dspNode = node;
         dspNode.connect(audioContext.destination);
@@ -71,10 +71,20 @@ function deviceMoved() {
 function deviceTurned() {
     threshVals[1] = turnAxis;
 }
+let lastShakeTime = -Infinity;
+
 function deviceShaken() {
     shaketimer = millis();
     statusLabels[0].style("color", "pink");
-    playAudio();
+
+    const now = millis();
+    if (now - lastShakeTime < 250) {
+        return;
+    }
+
+    if (playAudio()) {
+        lastShakeTime = now;
+    }
 }
 
 function getMinMaxParam(address) {
@@ -95,19 +105,53 @@ function getMinMaxParam(address) {
 //
 //==========================================================================================
 
+// MIDI note numbers: 60 = C4, 62 = D4, 64 = E4, 65 = F4, 67 = G4, 69 = A4.
+const melody = [
+    60, 60, 67, 67, 69, 69, 67,
+    65, 65, 64, 64, 62, 62, 60,
+    67, 67, 65, 65, 64, 64, 62,
+    67, 67, 65, 65, 64, 64, 62,
+    60, 60, 67, 67, 69, 69, 67,
+    65, 65, 64, 64, 62, 62, 60
+];
+
+let noteIndex = 0;
+let pluckInProgress = false;
+
 function playAudio() {
-    if (!dspNode) {
-        return;
+    if (!dspNode || audioContext.state !== "running" || pluckInProgress) {
+        return false;
     }
-    if (audioContext.state === 'suspended') {
-        return;
+
+    const params = dspNode.getParams();
+    const freqAddress = params.find(address => address.endsWith("/freq"));
+    const gateAddress = params.find(address => address.endsWith("/gate"));
+    const gainAddress = params.find(address => address.endsWith("/gain"));
+
+    if (!freqAddress || !gateAddress) {
+        console.error("Missing freq or gate parameter in the plucked-string model:", params);
+        return false;
     }
-    // Edit here the addresses ("/thunder/rumble") depending on your WASM controls (you can see 
-    // them printed on the console of your browser when you load the page)
-    // For example if you change to a bell sound, here you could use "/churchBell/gate" instead of
-    // "/thunder/rumble".
-    dspNode.setParamValue("/thunder/rumble", 1)
-    setTimeout(() => { dspNode.setParamValue("/thunder/rumble", 0) }, 100);
+
+    const midiNote = melody[noteIndex];
+    const frequency = 440 * Math.pow(2, (midiNote - 69) / 12);
+
+    if (gainAddress) {
+        dspNode.setParamValue(gainAddress, 0.2);
+    }
+
+    dspNode.setParamValue(freqAddress, frequency);
+    dspNode.setParamValue(gateAddress, 1);
+    pluckInProgress = true;
+
+    setTimeout(() => {
+        dspNode.setParamValue(gateAddress, 0);
+        pluckInProgress = false;
+    }, 60);
+
+    console.log(`Played note ${noteIndex + 1} of ${melody.length}`);
+    noteIndex = (noteIndex + 1) % melody.length;
+    return true;
 }
 
 //==========================================================================================

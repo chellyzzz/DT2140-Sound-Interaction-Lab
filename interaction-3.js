@@ -34,10 +34,10 @@ door.createDSP(audioContext, 1024)
         jsonParams = JSON.parse(jsonString)["ui"][0]["items"];
         dspNodeParams = jsonParams
 
-        // const exampleMinMaxParam = findByAddress(dspNodeParams, "/thunder/rumble");
-        // // ALWAYS PAY ATTENTION TO MIN AND MAX, ELSE YOU MAY GET REALLY HIGH VOLUMES FROM YOUR SPEAKERS
-        // const [exampleMinValue, exampleMaxValue] = getParamMinMax(exampleMinMaxParam);
-        // console.log('Min value:', exampleMinValue, 'Max value:', exampleMaxValue);
+        const exampleMinMaxParam = findByAddress(dspNodeParams, "/door/door/position");
+        // ALWAYS PAY ATTENTION TO MIN AND MAX, ELSE YOU MAY GET REALLY HIGH VOLUMES FROM YOUR SPEAKERS
+        const [exampleMinValue, exampleMaxValue] = getParamMinMax(exampleMinMaxParam);
+        console.log('Min value:', exampleMinValue, 'Max value:', exampleMaxValue);
     });
 
 
@@ -64,7 +64,7 @@ function mapRange(value, inMin, inMax, outMin, outMax) {
 }
 
 function rotationChange(rotx, roty, rotz) {
-    const deadzone = 15;    // keep silent until the rotation is greater than this value
+    const deadzone = 12;    // keep silent until the rotation is greater than this value
     const maxAngle = 45;   // maximum angle for full volume
 
     // Define the min and max values for the parameter of the door
@@ -129,14 +129,11 @@ function playAudio(positionVal) {
     if (typeof positionVal !== "number" || Number.isNaN(positionVal)) {
         return;
     }
-    if(positionVal != 0) {
-        volumeVal = 1;
-    }
-    else {
-        volumeVal = 0;
-    }
+
+
+    const volumeVal = mapRange(positionVal, 0, 0.5, 0, 1); // 0 ~ 0.5 to 0 ~ 1
     dspNode.setParamValue('/door/volume', volumeVal);
-    dspNode.setParamValue('/door/door/position', positionVal);
+    dspNode.setParamValue('/door/door/position', positionVal); // 0 ~ 0.5
 }
 //==========================================================================================
 // END

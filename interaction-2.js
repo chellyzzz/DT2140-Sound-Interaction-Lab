@@ -1,67 +1,82 @@
-//==========================================================================================
-// AUDIO SETUP
-//------------------------------------------------------------------------------------------
-//
-//------------------------------------------------------------------------------------------
-// Edit just where you're asked to!
-//------------------------------------------------------------------------------------------
-//
-//==========================================================================================
+// Load the course's Faust sci-fi sound.
 let dspNode = null;
-let dspNodeParams = null;
-let jsonParams = null;
 
-// Change here to ("tuono") depending on your wasm file name
-const dspName = "bells";
-const instance = new FaustWasm2ScriptProcessor(dspName);
+const triggerAddress = "/torpedo/trigger";
+const volumeAddress = "/torpedo/volume";
+const torpedo = new FaustWasm2ScriptProcessor("torpedo");
 
-// output to window or npm package module
-if (typeof module === "undefined") {
-    window[dspName] = instance;
-} else {
-    const exp = {};
-    exp[dspName] = instance;
-    module.exports = exp;
-}
-
-// The name should be the same as the WASM file, so change tuono with brass if you use brass.wasm
-bells.createDSP(audioContext, 1024)
+torpedo.createDSP(audioContext, 1024)
     .then(node => {
+        if (!node) {
+            return;
+        }
+
+        node.setParamValue(volumeAddress, 0.2);
+        node.connect(audioContext.destination);
         dspNode = node;
-        dspNode.connect(audioContext.destination);
-        console.log('params: ', dspNode.getParams());
-        const jsonString = dspNode.getJSON();
-        jsonParams = JSON.parse(jsonString)["ui"][0]["items"];
-        dspNodeParams = jsonParams
-        // const exampleMinMaxParam = findByAddress(dspNodeParams, "/thunder/rumble");
-        // // ALWAYS PAY ATTENTION TO MIN AND MAX, ELSE YOU MAY GET REALLY HIGH VOLUMES FROM YOUR SPEAKERS
-        // const [exampleMinValue, exampleMaxValue] = getParamMinMax(exampleMinMaxParam);
-        // console.log('Min value:', exampleMinValue, 'Max value:', exampleMaxValue);
-    });
+    })
+    .catch(error => console.error("Could not load the sci-fi sound:", error));
 
+const degreesPerStep = 45;
+const minimumTriggerInterval = 250;
+const triggerDuration = 100;
 
-//==========================================================================================
-// INTERACTIONS
-//------------------------------------------------------------------------------------------
-//
-//------------------------------------------------------------------------------------------
-// Edit the next functions to create interactions
-// Decide which parameters you're using and then use playAudio to play the Audio
-//------------------------------------------------------------------------------------------
-//
-//==========================================================================================
+let previousAngle = null;
+let accumulatedAngle = 0;
+let lastTriggerTime = -Infinity;
 
-function accelerationChange(accx, accy, accz) {
-    // playAudio()
+function rotationChange(_rotationX, _rotationY, rotationZ) {
+    if (!dspNode || audioContext.state !== "running" || !Number.isFinite(rotationZ)) {
+        previousAngle = null;
+        accumulatedAngle = 0;
+        return;
+    }
+
+    if (previousAngle === null) {
+        previousAngle = rotationZ;
+        return;
+    }
+
+    // Use the shortest angle change when the sensor wraps around.
+    const delta = ((rotationZ - previousAngle + 540) % 360) - 180;
+    previousAngle = rotationZ;
+    accumulatedAngle += delta;
+
+    if (Math.abs(accumulatedAngle) >= degreesPerStep) {
+        if (playTorpedo()) {
+            accumulatedAngle %= degreesPerStep;
+        } else {
+            // Discard this step during cooldown so it does not play later.
+            accumulatedAngle = 0;
+        }
+    }
 }
 
-function rotationChange(rotx, roty, rotz) {
+function playTorpedo() {
+    const now = millis();
+
+    if (!dspNode || audioContext.state !== "running" ||
+        now - lastTriggerTime < minimumTriggerInterval) {
+        return false;
+    }
+
+    lastTriggerTime = now;
+    dspNode.setParamValue(triggerAddress, 1);
+
+    setTimeout(() => {
+        dspNode.setParamValue(triggerAddress, 0);
+    }, triggerDuration);
+
+    return true;
 }
 
+// Click the canvas to test the sound on a computer.
 function mousePressed() {
-    // playAudio()
-    // Use this for debugging from the desktop!
+    playTorpedo();
 }
+
+// Callbacks used by the course's sketch.js.
+function accelerationChange() {}
 
 function deviceMoved() {
     movetimer = millis();
@@ -71,41 +86,8 @@ function deviceMoved() {
 function deviceTurned() {
     threshVals[1] = turnAxis;
 }
+
 function deviceShaken() {
     shaketimer = millis();
     statusLabels[0].style("color", "pink");
-    playAudio();
 }
-
-function getMinMaxParam(address) {
-    const exampleMinMaxParam = findByAddress(dspNodeParams, address);
-    // ALWAYS PAY ATTENTION TO MIN AND MAX, ELSE YOU MAY GET REALLY HIGH VOLUMES FROM YOUR SPEAKERS
-    const [exampleMinValue, exampleMaxValue] = getParamMinMax(exampleMinMaxParam);
-    console.log('Min value:', exampleMinValue, 'Max value:', exampleMaxValue);
-    return [exampleMinValue, exampleMaxValue]
-}
-
-//==========================================================================================
-// AUDIO INTERACTION
-//------------------------------------------------------------------------------------------
-//
-//------------------------------------------------------------------------------------------
-// Edit here to define your audio controls 
-//------------------------------------------------------------------------------------------
-//
-//==========================================================================================
-
-function playAudio() {
-    if (!dspNode) {
-        return;
-    }
-    if (audioContext.state === 'suspended') {
-        return;
-    }
-    dspNode.setParamValue("/englishBell/gate", 1)
-    setTimeout(() => { dspNode.setParamValue("/englishBell/gate", 0) }, 100);
-}
-
-//==========================================================================================
-// END
-//==========================================================================================
