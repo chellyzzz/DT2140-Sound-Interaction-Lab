@@ -34,8 +34,6 @@ door.createDSP(audioContext, 1024)
         jsonParams = JSON.parse(jsonString)["ui"][0]["items"];
         dspNodeParams = jsonParams
 
-        getMinMaxParam('/door/door/position');
-        getMinMaxParam('/door/volume');
         // const exampleMinMaxParam = findByAddress(dspNodeParams, "/thunder/rumble");
         // // ALWAYS PAY ATTENTION TO MIN AND MAX, ELSE YOU MAY GET REALLY HIGH VOLUMES FROM YOUR SPEAKERS
         // const [exampleMinValue, exampleMaxValue] = getParamMinMax(exampleMinMaxParam);
@@ -69,7 +67,7 @@ function rotationChange(rotx, roty, rotz) {
     // /door/door/position 的范围是 0 ~ 0.5
     const minVal = 0;
     const maxVal = 0.5;
-    const mappedPosition = mapRange(roty, -15, 15, minVal, maxVal);
+    const mappedPosition = mapRange(roty, -90, 90, minVal, maxVal);
 
     playAudio(mappedPosition);
 }
@@ -122,10 +120,7 @@ function playAudio(positionVal) {
         return;
     }
 
-    // 确保音量在 0 ~ 1 的安全范围内（比如先设一个适中音量，避免静音或过响）
     dspNode.setParamValue('/door/volume', 0.5);
-
-    // 映射门的位置参数（0 ~ 0.5）
     dspNode.setParamValue('/door/door/position', positionVal);
 }
 //==========================================================================================
