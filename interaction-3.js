@@ -64,7 +64,7 @@ function mapRange(value, inMin, inMax, outMin, outMax) {
 }
 
 function rotationChange(rotx, roty, rotz) {
-    const deadzone = 8;    // keep silent until the rotation is greater than this value
+    const deadzone = 15;    // keep silent until the rotation is greater than this value
     const maxAngle = 45;   // maximum angle for full volume
 
     // Define the min and max values for the parameter of the door
