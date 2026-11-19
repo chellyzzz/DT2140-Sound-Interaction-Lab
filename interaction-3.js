@@ -129,8 +129,13 @@ function playAudio(positionVal) {
     if (typeof positionVal !== "number" || Number.isNaN(positionVal)) {
         return;
     }
-
-    dspNode.setParamValue('/door/volume', positionVal);
+    if(positionVal != 0) {
+        volumeVal = 1;
+    }
+    else {
+        volumeVal = 0;
+    }
+    dspNode.setParamValue('/door/volume', volumeVal);
     dspNode.setParamValue('/door/door/position', positionVal);
 }
 //==========================================================================================
