@@ -12,7 +12,7 @@ let dspNodeParams = null;
 let jsonParams = null;
 
 // Change here to ("tuono") depending on your wasm file name
-const dspName = "brass";
+const dspName = "door";
 const instance = new FaustWasm2ScriptProcessor(dspName);
 
 // output to window or npm package module
@@ -25,7 +25,7 @@ if (typeof module === "undefined") {
 }
 
 // The name should be the same as the WASM file, so change tuono with brass if you use brass.wasm
-brass.createDSP(audioContext, 1024)
+door.createDSP(audioContext, 1024)
     .then(node => {
         dspNode = node;
         dspNode.connect(audioContext.destination);
@@ -33,6 +33,9 @@ brass.createDSP(audioContext, 1024)
         const jsonString = dspNode.getJSON();
         jsonParams = JSON.parse(jsonString)["ui"][0]["items"];
         dspNodeParams = jsonParams
+
+        getMinMaxParam('/door/door/position');
+        getMinMaxParam('/door/volume');
         // const exampleMinMaxParam = findByAddress(dspNodeParams, "/thunder/rumble");
         // // ALWAYS PAY ATTENTION TO MIN AND MAX, ELSE YOU MAY GET REALLY HIGH VOLUMES FROM YOUR SPEAKERS
         // const [exampleMinValue, exampleMaxValue] = getParamMinMax(exampleMinMaxParam);
@@ -55,7 +58,20 @@ function accelerationChange(accx, accy, accz) {
     // playAudio()
 }
 
+
+function mapRange(value, inMin, inMax, outMin, outMax) {
+    const clamped = Math.max(inMin, Math.min(inMax, value));
+    const ratio = (clamped - inMin) / (inMax - inMin);
+    return outMin + ratio * (outMax - outMin);
+}
+
 function rotationChange(rotx, roty, rotz) {
+    // /door/door/position 的范围是 0 ~ 0.5
+    const minVal = 0;
+    const maxVal = 0.5;
+    const mappedPosition = mapRange(roty, -15, 15, minVal, maxVal);
+
+    playAudio(mappedPosition);
 }
 
 function mousePressed() {
@@ -95,17 +111,23 @@ function getMinMaxParam(address) {
 //
 //==========================================================================================
 
-function playAudio(pressure) {
+function playAudio(positionVal) {
     if (!dspNode) {
         return;
     }
     if (audioContext.state === 'suspended') {
         return;
     }
-    console.log(pressure)
-    dspNode.setParamValue("/brass/blower/pressure", pressure)
-}
+    if (typeof positionVal !== "number" || Number.isNaN(positionVal)) {
+        return;
+    }
 
+    // 确保音量在 0 ~ 1 的安全范围内（比如先设一个适中音量，避免静音或过响）
+    dspNode.setParamValue('/door/volume', 0.5);
+
+    // 映射门的位置参数（0 ~ 0.5）
+    dspNode.setParamValue('/door/door/position', positionVal);
+}
 //==========================================================================================
 // END
 //==========================================================================================
